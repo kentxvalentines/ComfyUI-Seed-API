@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-byteplus-api"
+version = "1.0.0"
+description = "ComfyUI custom nodes for BytePlus (ByteDance) AI video generation API"
+authors = [
+    {name = "ComfyUI BytePlus Integration"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.25.0",
+    "torch>=1.9.0",
+    "pillow>=8.0.0",
+    "numpy>=1.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-repo/ComfyUI-BytePlus-API"
+Repository = "https://github.com/your-repo/ComfyUI-BytePlus-API"
+Issues = "https://github.com/your-repo/ComfyUI-BytePlus-API/issues"
