@@ -1,8 +1,8 @@
 from .byteplus_utils import BytePlusApiHandler, BytePlusImageUtils, BytePlusPromptBuilder
 
 
-class BytePlusSeedanceTextToVideoNode:
-    """BytePlus Seedance Text-to-Video Generation Node"""
+class SeedanceTextToVideoNode:
+    """Seedance Text-to-Video Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -22,7 +22,7 @@ class BytePlusSeedanceTextToVideoNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_video"
-    CATEGORY = "BytePlus/VideoGeneration"
+    CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
         self, 
@@ -65,17 +65,17 @@ class BytePlusSeedanceTextToVideoNode:
                 return (video_url,)
             else:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance Text-to-Video", "Failed to generate video"
+                    "Seedance Text-to-Video", "Failed to generate video"
                 )
                 
         except Exception as e:
             return BytePlusApiHandler.handle_video_generation_error(
-                "BytePlus Seedance Text-to-Video", str(e)
+                "Seedance Text-to-Video", str(e)
             )
 
 
-class BytePlusSeedanceImageToVideoNode:
-    """BytePlus Seedance Image-to-Video Generation Node (First Frame)"""
+class SeedanceImageToVideoNode:
+    """Seedance Image-to-Video Generation Node (First Frame)"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -96,7 +96,7 @@ class BytePlusSeedanceImageToVideoNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_video"
-    CATEGORY = "BytePlus/VideoGeneration"
+    CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
         self, 
@@ -114,7 +114,7 @@ class BytePlusSeedanceImageToVideoNode:
             image_base64 = BytePlusImageUtils.image_to_base64(image)
             if not image_base64:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance Image-to-Video", "Failed to convert image to base64"
+                    "Seedance Image-to-Video", "Failed to convert image to base64"
                 )
             
             # Build prompt with text commands
@@ -154,17 +154,17 @@ class BytePlusSeedanceImageToVideoNode:
                 return (video_url,)
             else:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance Image-to-Video", "Failed to generate video"
+                    "Seedance Image-to-Video", "Failed to generate video"
                 )
                 
         except Exception as e:
             return BytePlusApiHandler.handle_video_generation_error(
-                "BytePlus Seedance Image-to-Video", str(e)
+                "Seedance Image-to-Video", str(e)
             )
 
 
-class BytePlusSeedanceFirstLastFrameNode:
-    """BytePlus Seedance First+Last Frame Video Generation Node"""
+class SeedanceFirstLastFrameNode:
+    """Seedance First+Last Frame Video Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -185,7 +185,7 @@ class BytePlusSeedanceFirstLastFrameNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_video"
-    CATEGORY = "BytePlus/VideoGeneration"
+    CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
         self, 
@@ -205,7 +205,7 @@ class BytePlusSeedanceFirstLastFrameNode:
             
             if not first_frame_base64 or not last_frame_base64:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance First+Last Frame", "Failed to convert images to base64"
+                    "Seedance First+Last Frame", "Failed to convert images to base64"
                 )
             
             # Build prompt with text commands (no camerafixed for this mode)
@@ -251,17 +251,17 @@ class BytePlusSeedanceFirstLastFrameNode:
                 return (video_url,)
             else:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance First+Last Frame", "Failed to generate video"
+                    "Seedance First+Last Frame", "Failed to generate video"
                 )
                 
         except Exception as e:
             return BytePlusApiHandler.handle_video_generation_error(
-                "BytePlus Seedance First+Last Frame", str(e)
+                "Seedance First+Last Frame", str(e)
             )
 
 
-class BytePlusSeedanceReferenceImagesNode:
-    """BytePlus Seedance Reference Images Video Generation Node"""
+class SeedanceReferenceImagesNode:
+    """Seedance Reference Images Video Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -284,7 +284,7 @@ class BytePlusSeedanceReferenceImagesNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_video"
-    CATEGORY = "BytePlus/VideoGeneration"
+    CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
         self, 
@@ -331,7 +331,7 @@ class BytePlusSeedanceReferenceImagesNode:
                 image_base64 = BytePlusImageUtils.image_to_base64(ref_image)
                 if not image_base64:
                     return BytePlusApiHandler.handle_video_generation_error(
-                        "BytePlus Seedance Reference Images", f"Failed to convert reference image {i+1} to base64"
+                        "Seedance Reference Images", f"Failed to convert reference image {i+1} to base64"
                     )
                 
                 content.append({
@@ -352,17 +352,17 @@ class BytePlusSeedanceReferenceImagesNode:
                 return (video_url,)
             else:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance Reference Images", "Failed to generate video"
+                    "Seedance Reference Images", "Failed to generate video"
                 )
                 
         except Exception as e:
             return BytePlusApiHandler.handle_video_generation_error(
-                "BytePlus Seedance Reference Images", str(e)
+                "Seedance Reference Images", str(e)
             )
 
 
-class BytePlusSeedanceProNode:
-    """BytePlus Seedance Pro Video Generation Node"""
+class SeedanceProNode:
+    """Seedance Pro Video Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -384,7 +384,7 @@ class BytePlusSeedanceProNode:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_video"
-    CATEGORY = "BytePlus/VideoGeneration"
+    CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
         self, 
@@ -423,13 +423,13 @@ class BytePlusSeedanceProNode:
             if mode == "image-to-video":
                 if image is None:
                     return BytePlusApiHandler.handle_video_generation_error(
-                        "BytePlus Seedance Pro", "Image is required for image-to-video mode"
+                        "Seedance Pro", "Image is required for image-to-video mode"
                     )
                 
                 image_base64 = BytePlusImageUtils.image_to_base64(image)
                 if not image_base64:
                     return BytePlusApiHandler.handle_video_generation_error(
-                        "BytePlus Seedance Pro", "Failed to convert image to base64"
+                        "Seedance Pro", "Failed to convert image to base64"
                     )
                 
                 content.append({
@@ -450,22 +450,22 @@ class BytePlusSeedanceProNode:
                 return (video_url,)
             else:
                 return BytePlusApiHandler.handle_video_generation_error(
-                    "BytePlus Seedance Pro", "Failed to generate video"
+                    "Seedance Pro", "Failed to generate video"
                 )
                 
         except Exception as e:
             return BytePlusApiHandler.handle_video_generation_error(
-                "BytePlus Seedance Pro", str(e)
+                "Seedance Pro", str(e)
             )
 
 
 # Node class mappings
 NODE_CLASS_MAPPINGS = {
-    "SeedanceLiteTextToVideo": BytePlusSeedanceTextToVideoNode,
-    "SeedanceLiteImageToVideo": BytePlusSeedanceImageToVideoNode,
-    "SeedanceLiteFirstLastFrame": BytePlusSeedanceFirstLastFrameNode,
-    "SeedanceLiteReferenceImages": BytePlusSeedanceReferenceImagesNode,
-    "SeedanceProTextImageToVideo": BytePlusSeedanceProNode,
+    "SeedanceLiteTextToVideo": SeedanceTextToVideoNode,
+    "SeedanceLiteImageToVideo": SeedanceImageToVideoNode,
+    "SeedanceLiteFirstLastFrame": SeedanceFirstLastFrameNode,
+    "SeedanceLiteReferenceImages": SeedanceReferenceImagesNode,
+    "SeedanceProTextImageToVideo": SeedanceProNode,
 }
 
 # Node display name mappings
