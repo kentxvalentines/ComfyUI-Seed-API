@@ -3,11 +3,11 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "comfyui-byteplus-api"
+name = "comfyui-seed-api"
 version = "1.0.0"
-description = "ComfyUI custom nodes for BytePlus (ByteDance) AI video generation API"
+description = "ComfyUI custom nodes for Seed AI APIs including video generation, image generation, and chat models"
 authors = [
-    {name = "ComfyUI BytePlus Integration"}
+    {name = "ComfyUI Seed API Integration"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -20,6 +20,6 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-repo/ComfyUI-BytePlus-API"
-Repository = "https://github.com/your-repo/ComfyUI-BytePlus-API"
-Issues = "https://github.com/your-repo/ComfyUI-BytePlus-API/issues"
+Homepage = "https://github.com/your-repo/ComfyUI-Seed-API"
+Repository = "https://github.com/your-repo/ComfyUI-Seed-API"
+Issues = "https://github.com/your-repo/ComfyUI-Seed-API/issues"
