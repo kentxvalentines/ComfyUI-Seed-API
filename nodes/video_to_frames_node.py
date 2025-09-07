@@ -35,7 +35,7 @@ class VideoToFrames:
         }
 
     FUNCTION = "extract_frames"
-    CATEGORY = "BytePlus/Video"
+    CATEGORY = "Seed/Video"
 
     RETURN_TYPES = ("IMAGE", "INT", "FLOAT")
     RETURN_NAMES = ("frames", "frame_count", "fps")
