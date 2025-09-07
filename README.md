@@ -1,6 +1,6 @@
-# ComfyUI BytePlus API Integration
+# ComfyUI Seed API Integration
 
-This ComfyUI custom node provides comprehensive integration with BytePlus (ByteDance) AI APIs, including both video generation (Seedance) and image generation (Seedream/SeedEdit) models.
+This ComfyUI custom node provides comprehensive integration with Seed AI APIs, including both video generation (Seedance), image generation (Seedream/SeedEdit), and chat models (Seed 1.6).
 
 ## Features
 
@@ -9,7 +9,7 @@ This ComfyUI custom node provides comprehensive integration with BytePlus (ByteD
 - **Image-to-Video Generation**: Generate videos using input images as first frames
 - **First+Last Frame Generation**: Create videos between two specific frames
 - **Reference Images Generation**: Generate videos based on multiple reference images
-- **High-Quality Pro Models**: Access to BytePlus's premium Seedance Pro model
+- **High-Quality Pro Models**: Access to premium Seedance Pro model
 
 ### Image Generation
 - **Text-to-Image Generation**: Create high-quality images from text prompts using Seedream 3.0
@@ -21,12 +21,12 @@ This ComfyUI custom node provides comprehensive integration with BytePlus (ByteD
 1. Clone this repository into your ComfyUI custom_nodes directory:
 ```bash
 cd ComfyUI/custom_nodes/
-git clone https://github.com/FloyoAI/ComfyUI-BytePlus-API.git
+git clone https://github.com/FloyoAI/ComfyUI-Seed-API.git
 ```
 
 2. Install requirements:
 ```bash
-cd ComfyUI-BytePlus-API
+cd ComfyUI-Seed-API
 pip install -r requirements.txt
 ```
 
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ## Available Nodes
 
-### Video Generation Nodes (BytePlus/VideoGeneration)
+### Video Generation Nodes (Seed/VideoGeneration)
 
 - **Seedance Lite Text-to-Video**: Generate videos from text prompts only
   - Input: Text prompt, resolution, ratio, duration, FPS, seed, camera settings
@@ -66,7 +66,7 @@ pip install -r requirements.txt
   - Output: Video URL (STRING)
   - Use case: Premium quality video generation for professional use
 
-### Image Generation Nodes (BytePlus/ImageGeneration)
+### Image Generation Nodes (Seed/ImageGeneration)
 
 - **Seedream Text-to-Image**: Generate images from text descriptions
   - Input: Text prompt, size selection, optional seed
@@ -78,7 +78,16 @@ pip install -r requirements.txt
   - Output: Edited image (IMAGE)
   - Use case: Modify existing images based on text instructions (change colors, add/remove objects, style transfer)
 
-### Utility Nodes (BytePlus/Video)
+### Chat & Vision Nodes (Seed/Chat)
+
+- **Seed 1.6 Chat**: Unified chat node with vision support and session memory
+  - Input: Model selection, user message, session ID, optional system message, up to 4 images
+  - Output: Response text, full conversation, session status
+  - Models: seed-1-6-250615, seed-1-6-flash-250715
+  - Features: Session-based conversation memory, multimodal support, external history import
+  - Use case: All chat scenarios - text generation, image analysis, complex conversations
+
+### Utility Nodes (Seed/Video)
 
 - **Video URL to Frames**: Extract all frames from a video URL
   - Input: Video URL (STRING)
@@ -123,6 +132,30 @@ pip install -r requirements.txt
    - Compatible with all ComfyUI image processing nodes
    - Can be saved, edited, or used as input for video generation
 
+### Chat & Vision Workflow
+1. **Session management**:
+   - **Session ID**: Use unique identifiers for different conversations (e.g., "project1", "analysis2")
+   - **Session Memory**: Toggle on/off to maintain conversation context across multiple runs
+   - **Clear Session**: Reset conversation memory when starting new topics
+
+2. **Model selection**:
+   - **seed-1-6-250615**: Balanced performance and quality
+   - **seed-1-6-flash-250715**: Faster responses, optimized for speed
+
+3. **Configure thinking and reasoning**:
+   - **Thinking mode**: Enable for deeper reasoning (default: enabled)
+   - **Reasoning effort**: Adjust computational intensity (low/medium/high)
+
+4. **Use multimodal features**:
+   - Attach up to 4 images simultaneously
+   - Set image detail level (auto/high/low) based on your needs
+   - High detail for analysis, low detail for simple recognition
+
+5. **Conversation continuity**:
+   - **Built-in memory**: Automatically remembers previous messages in the session
+   - **External history**: Import conversations from other sources
+   - **Full conversation output**: Get formatted conversation history for export/review
+
 ## Requirements
 
 - ComfyUI
@@ -153,6 +186,14 @@ pip install -r requirements.txt
 - **Use SeedEdit for modifications**: Better than text-to-image for specific edits
 - **Guidance scale tuning**: Start with default 5.5, increase for more prompt adherence
 - **Size selection**: Use "adaptive" for SeedEdit to maintain original proportions
+
+### Chat & Vision
+- **Session management**: Use descriptive session IDs and enable memory for ongoing conversations
+- **Model choice**: Use seed-1-6-flash-250715 for speed, seed-1-6-250615 for quality
+- **Image detail settings**: High detail for analysis tasks, low for simple recognition
+- **Thinking mode**: Keep enabled for complex reasoning, disable for simple responses
+- **System prompts**: Use for role-playing, context setting, and output formatting
+- **Memory limits**: Sessions automatically trim to last 20 messages to prevent memory bloat
 
 ## Troubleshooting
 
