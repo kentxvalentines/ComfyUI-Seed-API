@@ -5,6 +5,7 @@ node_list = [
     "byteplus_video_node",
     "video_to_frames_node",
     "byteplus_image_node",
+    "byteplus_chat_node",
 ]
 
 NODE_CLASS_MAPPINGS = {}
