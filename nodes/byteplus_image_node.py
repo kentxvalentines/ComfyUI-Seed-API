@@ -6,12 +6,12 @@ from PIL import Image
 from .byteplus_utils import BytePlusConfig, BytePlusImageUtils
 
 
-class BytePlusResultProcessor:
-    """Utility functions for processing BytePlus image generation results."""
+class SeedResultProcessor:
+    """Utility functions for processing Seed image generation results."""
 
     @staticmethod
     def process_image_result(result):
-        """Process BytePlus image generation result and return tensor."""
+        """Process Seed image generation result and return tensor."""
         try:
             images = []
             # BytePlus API returns data array with url field
@@ -29,8 +29,8 @@ class BytePlusResultProcessor:
             img_tensor = torch.from_numpy(stacked_images)
             return (img_tensor,)
         except Exception as e:
-            print(f"Error processing BytePlus image result: {str(e)}")
-            return BytePlusResultProcessor.create_blank_image()
+            print(f"Error processing Seed image result: {str(e)}")
+            return SeedResultProcessor.create_blank_image()
 
     @staticmethod
     def create_blank_image():
@@ -41,12 +41,12 @@ class BytePlusResultProcessor:
         return (img_tensor,)
 
 
-class BytePlusImageApiHandler:
-    """Utility functions for BytePlus image API interactions."""
+class SeedImageApiHandler:
+    """Utility functions for Seed image API interactions."""
 
     @staticmethod
     def generate_image(model, arguments):
-        """Generate image using BytePlus API."""
+        """Generate image using Seed API."""
         config = BytePlusConfig()
         
         headers = {
@@ -59,7 +59,7 @@ class BytePlusImageApiHandler:
             **arguments
         }
         
-        print(f"Making BytePlus image request to: {config.get_base_url()}/images/generations")
+        print(f"Making Seed image request to: {config.get_base_url()}/images/generations")
         print(f"Model: {model}")
         print(f"Requested batch size (n): {payload.get('n', 1)}")
         print(f"Payload: {payload}")
@@ -74,25 +74,25 @@ class BytePlusImageApiHandler:
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"BytePlus image generation successful: {result}")
+                print(f"Seed image generation successful: {result}")
                 return result
             else:
-                print(f"BytePlus image generation error: {response.status_code} - {response.text}")
+                print(f"Seed image generation error: {response.status_code} - {response.text}")
                 raise Exception(f"API request failed: {response.status_code} - {response.text}")
                 
         except Exception as e:
-            print(f"Error in BytePlus image generation: {str(e)}")
+            print(f"Error in Seed image generation: {str(e)}")
             raise e
 
     @staticmethod
     def handle_image_generation_error(model_name, error):
         """Handle image generation errors consistently."""
         print(f"Error generating image with {model_name}: {str(error)}")
-        return BytePlusResultProcessor.create_blank_image()
+        return SeedResultProcessor.create_blank_image()
 
 
-class BytePlusSeedreamTextToImageNode:
-    """BytePlus Seedream Text-to-Image Generation Node"""
+class SeedreamTextToImageNode:
+    """Seedream Text-to-Image Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -109,7 +109,7 @@ class BytePlusSeedreamTextToImageNode:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "generate_image"
-    CATEGORY = "BytePlus/ImageGeneration"
+    CATEGORY = "Seed/ImageGeneration"
 
     def generate_image(self, prompt, size, seed=-1):
         try:
@@ -125,21 +125,21 @@ class BytePlusSeedreamTextToImageNode:
             if seed != -1:
                 arguments["seed"] = seed
             
-            result = BytePlusImageApiHandler.generate_image(
+            result = SeedImageApiHandler.generate_image(
                 "seedream-3-0-t2i-250415", 
                 arguments
             )
             
-            return BytePlusResultProcessor.process_image_result(result)
+            return SeedResultProcessor.process_image_result(result)
             
         except Exception as e:
-            return BytePlusImageApiHandler.handle_image_generation_error(
-                "BytePlus Seedream Text-to-Image", str(e)
+            return SeedImageApiHandler.handle_image_generation_error(
+                "Seedream Text-to-Image", str(e)
             )
 
 
-class BytePlusSeedEditImageToImageNode:
-    """BytePlus SeedEdit Image-to-Image Generation Node"""
+class SeedEditImageToImageNode:
+    """SeedEdit Image-to-Image Generation Node"""
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -158,15 +158,15 @@ class BytePlusSeedEditImageToImageNode:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "generate_image"
-    CATEGORY = "BytePlus/ImageGeneration"
+    CATEGORY = "Seed/ImageGeneration"
 
     def generate_image(self, prompt, image, size, seed=-1, guidance_scale=5.5):
         try:
             # Convert image to base64
             image_base64 = BytePlusImageUtils.image_to_base64(image)
             if not image_base64:
-                return BytePlusImageApiHandler.handle_image_generation_error(
-                    "BytePlus SeedEdit Image-to-Image", "Failed to convert image to base64"
+                return SeedImageApiHandler.handle_image_generation_error(
+                    "SeedEdit Image-to-Image", "Failed to convert image to base64"
                 )
             
             arguments = {
@@ -183,27 +183,27 @@ class BytePlusSeedEditImageToImageNode:
             if seed != -1:
                 arguments["seed"] = seed
             
-            result = BytePlusImageApiHandler.generate_image(
+            result = SeedImageApiHandler.generate_image(
                 "seededit-3-0-i2i-250628", 
                 arguments
             )
             
-            return BytePlusResultProcessor.process_image_result(result)
+            return SeedResultProcessor.process_image_result(result)
             
         except Exception as e:
-            return BytePlusImageApiHandler.handle_image_generation_error(
-                "BytePlus SeedEdit Image-to-Image", str(e)
+            return SeedImageApiHandler.handle_image_generation_error(
+                "SeedEdit Image-to-Image", str(e)
             )
 
 
 # Node class mappings
 NODE_CLASS_MAPPINGS = {
-    "BytePlusSeedreamTextToImage": BytePlusSeedreamTextToImageNode,
-    "BytePlusSeedEditImageToImage": BytePlusSeedEditImageToImageNode,
+    "SeedreamTextToImage": SeedreamTextToImageNode,
+    "SeedEditImageToImage": SeedEditImageToImageNode,
 }
 
 # Node display name mappings
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "BytePlusSeedreamTextToImage": "Seedream Text-to-Image",
-    "BytePlusSeedEditImageToImage": "SeedEdit Image-to-Image",
+    "SeedreamTextToImage": "Seedream Text-to-Image",
+    "SeedEditImageToImage": "SeedEdit Image-to-Image",
 }
