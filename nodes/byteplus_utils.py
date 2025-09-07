@@ -267,6 +267,123 @@ class BytePlusApiHandler:
         return ("",)
 
 
+class BytePlusChatApiHandler:
+    """Utility functions for BytePlus Chat API interactions."""
+
+    @staticmethod
+    def create_chat_completion(
+        model: str,
+        messages: list,
+        stream: bool = False,
+        thinking_type: str = "enabled",
+        reasoning_effort: str = "medium"
+    ) -> Optional[Dict[str, Any]]:
+        """Create a chat completion and return the response."""
+        config = BytePlusConfig()
+        
+        headers = {
+            "Authorization": f"Bearer {config.get_api_key()}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": stream,
+            "thinking": {"type": thinking_type},
+            "reasoning_effort": reasoning_effort
+        }
+        
+        print(f"Making chat request to: {config.get_base_url()}/chat/completions")
+        print(f"Model: {model}")
+        print(f"Messages count: {len(messages)}")
+        print(f"Stream: {stream}")
+        print(f"Thinking: {thinking_type}")
+        print(f"Reasoning effort: {reasoning_effort}")
+        
+        try:
+            response = requests.post(
+                f"{config.get_base_url()}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=120  # Longer timeout for chat responses
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                print(f"Chat completion successful")
+                return result
+            else:
+                print(f"Chat completion error: {response.status_code} - {response.text}")
+                raise Exception(f"API request failed: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"Error in chat completion: {str(e)}")
+            raise e
+
+    @staticmethod
+    def handle_chat_error(model_name: str, error: str) -> tuple:
+        """Handle chat errors consistently."""
+        error_message = f"Error with {model_name}: {str(error)}"
+        print(error_message)
+        return (error_message,)
+
+
+class BytePlusChatUtils:
+    """Utility functions for chat message formatting."""
+
+    @staticmethod
+    def format_text_message(role: str, content: str) -> Dict[str, Any]:
+        """Format a text message for the chat API."""
+        return {
+            "role": role,
+            "content": content
+        }
+
+    @staticmethod
+    def format_multimodal_message(role: str, text: str, images: list = None, detail: str = "auto") -> Dict[str, Any]:
+        """Format a multimodal message with text and images."""
+        content = []
+        
+        # Add text content
+        if text:
+            content.append({
+                "type": "text",
+                "text": text
+            })
+        
+        # Add image content
+        if images:
+            for image in images:
+                if image is not None:
+                    image_base64 = BytePlusImageUtils.image_to_base64(image)
+                    if image_base64:
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_base64,
+                                "detail": detail
+                            }
+                        })
+        
+        return {
+            "role": role,
+            "content": content
+        }
+
+    @staticmethod
+    def extract_response_text(response: Dict[str, Any]) -> str:
+        """Extract text content from chat completion response."""
+        try:
+            if "choices" in response and len(response["choices"]) > 0:
+                choice = response["choices"][0]
+                if "message" in choice and "content" in choice["message"]:
+                    return choice["message"]["content"]
+            return "No response content found"
+        except Exception as e:
+            return f"Error extracting response: {str(e)}"
+
+
 class BytePlusPromptBuilder:
     """Utility class for building BytePlus prompts with text commands."""
     
