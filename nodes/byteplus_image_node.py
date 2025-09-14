@@ -3,7 +3,7 @@ import requests
 import torch
 import numpy as np
 from PIL import Image
-from .byteplus_utils import BytePlusConfig, BytePlusImageUtils
+from .byteplus_utils import BytePlusConfig, BytePlusImageUtils, LoggingUtils
 
 
 class SeedResultProcessor:
@@ -67,7 +67,7 @@ class SeedImageApiHandler:
         print(f"Making Seed image request to: {config.get_base_url()}/images/generations")
         print(f"Model: {model}")
         print(f"Requested batch size (n): {payload.get('n', 1)}")
-        print(f"Payload: {payload}")
+        LoggingUtils.safe_log_payload(payload, "Payload")
         
         try:
             response = requests.post(
@@ -79,7 +79,7 @@ class SeedImageApiHandler:
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"Seed image generation successful: {result}")
+                LoggingUtils.safe_log_payload(result, "Seed image generation successful")
                 return result
             else:
                 print(f"Seed image generation error: {response.status_code} - {response.text}")

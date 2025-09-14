@@ -6,11 +6,46 @@ import os
 import time
 import tempfile
 from typing import Optional, Dict, Any
+import copy
 
 import numpy as np
 import requests
 import torch
 from PIL import Image
+
+
+class LoggingUtils:
+    """Utility functions for safe logging that truncates base64 strings."""
+
+    @staticmethod
+    def truncate_base64_in_dict(data, max_length=50):
+        """Recursively truncate base64 strings in a dictionary for logging."""
+        if isinstance(data, dict):
+            truncated = {}
+            for key, value in data.items():
+                truncated[key] = LoggingUtils.truncate_base64_in_dict(value, max_length)
+            return truncated
+        elif isinstance(data, list):
+            return [LoggingUtils.truncate_base64_in_dict(item, max_length) for item in data]
+        elif isinstance(data, str):
+            # Check if string looks like base64 data URI
+            if data.startswith('data:image/') and 'base64,' in data and len(data) > 100:
+                # Find the base64 part
+                base64_start = data.find('base64,') + 7
+                prefix = data[:base64_start]
+                base64_part = data[base64_start:]
+                if len(base64_part) > max_length:
+                    truncated_b64 = base64_part[:max_length] + f"...[{len(base64_part)-max_length} chars truncated]"
+                    return prefix + truncated_b64
+            return data
+        else:
+            return data
+
+    @staticmethod
+    def safe_log_payload(payload, description="Payload"):
+        """Safely log a payload by truncating base64 strings."""
+        safe_payload = LoggingUtils.truncate_base64_in_dict(copy.deepcopy(payload))
+        print(f"{description}: {safe_payload}")
 
 
 class BytePlusConfig:
@@ -141,7 +176,7 @@ class BytePlusApiHandler:
         print(f"API Key length: {len(config.get_api_key()) if config.get_api_key() else 0}")
         print(f"API Key starts with: {config.get_api_key()[:10] if config.get_api_key() else 'None'}...")
         print(f"Headers: {headers}")
-        print(f"Payload: {payload}")
+        LoggingUtils.safe_log_payload(payload, "Payload")
         
         if callback_url:
             payload["callback_url"] = callback_url
@@ -208,8 +243,8 @@ class BytePlusApiHandler:
             print(f"Task {task_id} status: {status}")
             
             if status == "succeeded":
-                # Debug: Print the full response to understand the structure
-                print(f"Full successful response: {result}")
+                # Debug: Print the full response to understand the structure (with base64 truncation)
+                LoggingUtils.safe_log_payload(result, "Full successful response")
                 
                 # Look for video URL in the result - try multiple possible paths
                 if "content" in result and "video_url" in result["content"]:
