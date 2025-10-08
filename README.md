@@ -61,9 +61,10 @@ pip install -r requirements.txt
   - Output: Video URL (STRING)
   - Use case: Generate videos that maintain style/appearance consistency with reference materials
 
-- **Seedance Pro Text/Image-to-Video**: High-quality video generation
-  - Input: Text prompt, mode selection, optional input image, resolution, ratio, duration
+- **Seedance Pro Text/Image-to-Video**: High-quality video generation with end frame support
+  - Input: Text prompt, mode selection, optional input image, optional end frame, resolution, ratio, duration
   - Output: Video URL (STRING)
+  - Features: Automatic first+last frame detection when end frame is provided in image-to-video mode
   - Use case: Premium quality video generation for professional use
 
 ### Image Generation Nodes (Seed/ImageGeneration)
@@ -98,11 +99,11 @@ pip install -r requirements.txt
 
 ### Video Generation Workflow
 1. **Choose the appropriate video node** based on your input type:
-   - Text only → Seedance Lite Text-to-Video
-   - Single image → Seedance Lite Image-to-Video
-   - Two images → Seedance Lite First+Last Frame
+   - Text only → Seedance Lite Text-to-Video or Seedance Pro (text-to-video mode)
+   - Single image → Seedance Lite Image-to-Video or Seedance Pro (image-to-video mode)
+   - Two images → Seedance Lite First+Last Frame or Seedance Pro (image-to-video mode with end frame)
    - Multiple references → Seedance Lite Reference Images
-   - High quality → Seedance Pro
+   - High quality → Seedance Pro (supports all modes with automatic detection)
 
 2. **Configure parameters**:
    - **Prompt**: Describe what you want in the video
@@ -180,6 +181,7 @@ pip install -r requirements.txt
 - **Be specific in prompts**: Include details about movement, camera angles, and style
 - **Use appropriate ratios**: Match your intended use case (16:9 for landscape, 9:16 for mobile, etc.)
 - **Leverage reference images**: For consistent character/style appearance across videos
+- **Seedance Pro end frame support**: In image-to-video mode, connect an optional end frame to automatically enable first+last frame generation for smoother transitions
 
 ### Image Generation
 - **Detailed prompts work better**: Include style, lighting, composition details

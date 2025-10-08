@@ -376,6 +376,7 @@ class SeedanceProNode:
             },
             "optional": {
                 "image": ("IMAGE",),
+                "end_frame": ("IMAGE",),
                 "framepersecond": ("INT", {"default": 24, "min": 24, "max": 24, "step": 1}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
                 "camerafixed": ("BOOLEAN", {"default": False}),
@@ -387,13 +388,14 @@ class SeedanceProNode:
     CATEGORY = "Seed/VideoGeneration"
 
     def generate_video(
-        self, 
-        prompt, 
+        self,
+        prompt,
         mode,
-        resolution, 
-        ratio, 
+        resolution,
+        ratio,
         duration,
         image=None,
+        end_frame=None,
         framepersecond=24,
         seed=-1,
         camerafixed=False
@@ -419,19 +421,20 @@ class SeedanceProNode:
                 }
             ]
             
-            # Add image if in image-to-video mode
+            # Add image(s) if in image-to-video mode
             if mode == "image-to-video":
                 if image is None:
                     return BytePlusApiHandler.handle_video_generation_error(
                         "Seedance Pro", "Image is required for image-to-video mode"
                     )
-                
+
+                # Convert first frame
                 image_base64 = BytePlusImageUtils.image_to_base64(image)
                 if not image_base64:
                     return BytePlusApiHandler.handle_video_generation_error(
                         "Seedance Pro", "Failed to convert image to base64"
                     )
-                
+
                 content.append({
                     "type": "image_url",
                     "image_url": {
@@ -439,6 +442,23 @@ class SeedanceProNode:
                     },
                     "role": "first_frame"
                 })
+
+                # Check if end_frame is provided for first+last frame generation
+                if end_frame is not None:
+                    # Convert last frame
+                    last_frame_base64 = BytePlusImageUtils.image_to_base64(end_frame)
+                    if not last_frame_base64:
+                        return BytePlusApiHandler.handle_video_generation_error(
+                            "Seedance Pro", "Failed to convert end frame image to base64"
+                        )
+
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": last_frame_base64
+                        },
+                        "role": "last_frame"
+                    })
             
             # Submit to BytePlus API
             video_url = BytePlusApiHandler.submit_and_get_result(
