@@ -4,6 +4,8 @@ import requests
 import tempfile
 import numpy as np
 import time
+import subprocess
+import re
 from PIL import Image
 
 # Try to import opencv - if not available, provide error message
@@ -109,6 +111,120 @@ def _fetch_video(url, timeout=300):
         raise Exception(f"Unexpected error during download: {str(e)}")
 
 
+def _get_ffmpeg_path():
+    """Find FFmpeg executable in common locations."""
+    import shutil
+
+    ffmpeg_paths = []
+
+    # Try imageio_ffmpeg first (bundled with many ComfyUI installations)
+    try:
+        from imageio_ffmpeg import get_ffmpeg_exe
+        imageio_ffmpeg_path = get_ffmpeg_exe()
+        if imageio_ffmpeg_path and os.path.isfile(imageio_ffmpeg_path):
+            ffmpeg_paths.append(imageio_ffmpeg_path)
+    except ImportError:
+        pass
+
+    # Try system PATH
+    system_ffmpeg = shutil.which("ffmpeg")
+    if system_ffmpeg:
+        ffmpeg_paths.append(system_ffmpeg)
+
+    # Check ComfyUI root directory
+    if os.path.isfile("ffmpeg"):
+        ffmpeg_paths.append(os.path.abspath("ffmpeg"))
+    if os.path.isfile("ffmpeg.exe"):
+        ffmpeg_paths.append(os.path.abspath("ffmpeg.exe"))
+
+    # Return first found path
+    if ffmpeg_paths:
+        return ffmpeg_paths[0]
+
+    # If not found, return None to trigger helpful error
+    return None
+
+
+def _extract_audio(video_path):
+    """
+    Extract audio from video file using FFmpeg.
+    Returns audio in ComfyUI format: {'waveform': tensor, 'sample_rate': int}
+    """
+    # Try to find ffmpeg
+    ffmpeg_path = _get_ffmpeg_path()
+
+    if ffmpeg_path is None:
+        print("=" * 80)
+        print("FFmpeg not found - cannot extract audio.")
+        print("")
+        print("To enable audio extraction, install FFmpeg:")
+        print("  Option 1 (Easiest): pip install imageio-ffmpeg")
+        print("  Option 2: Download from https://ffmpeg.org/download.html")
+        print("            and add to system PATH or place in ComfyUI root")
+        print("  Then restart ComfyUI")
+        print("=" * 80)
+        return {'waveform': torch.zeros((1, 1, 1), dtype=torch.float32), 'sample_rate': 44100}
+
+    try:
+
+        # Extract audio as raw f32le PCM data
+        args = [
+            ffmpeg_path, "-i", video_path,
+            "-f", "f32le",  # 32-bit float little-endian PCM
+            "-"  # Output to stdout
+        ]
+
+        # Run ffmpeg and capture output
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            check=True
+        )
+
+        # Parse audio from stdout
+        audio_data = torch.frombuffer(bytearray(result.stdout), dtype=torch.float32)
+
+        # Parse stderr to get audio properties
+        stderr_output = result.stderr.decode('utf-8', errors='ignore')
+
+        # Extract sample rate and channels from FFmpeg output
+        # Look for patterns like "44100 Hz, stereo" or "48000 Hz, mono"
+        match = re.search(r', (\d+) Hz, (\w+)', stderr_output)
+
+        if match:
+            sample_rate = int(match.group(1))
+            channel_type = match.group(2)
+            channels = {"mono": 1, "stereo": 2}.get(channel_type, 2)
+        else:
+            # Default values if parsing fails
+            sample_rate = 44100
+            channels = 2
+
+        # Reshape audio data: (total_samples,) -> (channels, samples_per_channel) -> (1, channels, samples_per_channel)
+        if len(audio_data) > 0:
+            audio_data = audio_data.reshape((-1, channels)).transpose(0, 1).unsqueeze(0)
+        else:
+            # No audio in video - return empty audio
+            audio_data = torch.zeros((1, 1, 1), dtype=torch.float32)
+            sample_rate = 44100
+
+        return {'waveform': audio_data, 'sample_rate': sample_rate}
+
+    except subprocess.CalledProcessError as e:
+        # FFmpeg failed - video might not have audio
+        stderr_output = e.stderr.decode('utf-8', errors='ignore') if e.stderr else ""
+        if "Output file is empty" in stderr_output or "does not contain any stream" in stderr_output:
+            print("Video does not contain an audio stream")
+        else:
+            print(f"Audio extraction failed (video may not have audio): {stderr_output}")
+        # Return silent audio
+        return {'waveform': torch.zeros((1, 1, 1), dtype=torch.float32), 'sample_rate': 44100}
+    except Exception as e:
+        print(f"Unexpected error extracting audio: {str(e)}")
+        # Return silent audio
+        return {'waveform': torch.zeros((1, 1, 1), dtype=torch.float32), 'sample_rate': 44100}
+
+
 class VideoToFrames:
     """
     Simple node that extracts all frames from a video URL as a tensor batch.
@@ -126,20 +242,21 @@ class VideoToFrames:
     FUNCTION = "extract_frames"
     CATEGORY = "Seed/Video"
 
-    RETURN_TYPES = ("IMAGE", "INT", "FLOAT")
-    RETURN_NAMES = ("frames", "frame_count", "fps")
+    RETURN_TYPES = ("IMAGE", "AUDIO", "FLOAT", "INT")
+    RETURN_NAMES = ("frames", "audio", "fps", "frame_count")
 
     def extract_frames(self, video_url):
         """
-        Simple function that downloads video and extracts all frames.
-        
+        Simple function that downloads video and extracts all frames and audio.
+
         Args:
             video_url: URL of the video to download
-            
+
         Returns:
             frames: Extracted frames as IMAGE tensor batch
-            frame_count: Number of extracted frames
+            audio: Audio track from the video in ComfyUI format
             fps: FPS of the video
+            frame_count: Number of extracted frames
         """
         
         # Handle case where video_url might be a list
@@ -150,6 +267,7 @@ class VideoToFrames:
         frames_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)  # Default empty frames
         frame_count = 0
         video_fps = 0.0
+        audio = {'waveform': torch.zeros((1, 1, 1), dtype=torch.float32), 'sample_rate': 44100}  # Default empty audio
         
         # Download video content (5 minute timeout)
         try:
@@ -164,80 +282,88 @@ class VideoToFrames:
 
             raise Exception(user_error)
         
-        # Extract frames
+        # Extract frames and audio
         if video_content:
+            # Save video to temporary file for both frame and audio extraction
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+                temp_file.write(video_content)
+                temp_path = temp_file.name
+
             try:
-                frames_tensor, frame_count, video_fps = self._extract_frames(video_content)
+                # Extract frames
+                frames_tensor, frame_count, video_fps = self._extract_frames_from_file(temp_path)
                 print(f"Extracted {frame_count} frames at {video_fps:.2f} fps")
+
+                # Extract audio
+                audio = _extract_audio(temp_path)
+                if audio['waveform'].shape[2] > 1:  # Check if audio was actually extracted
+                    print(f"Extracted audio: {audio['sample_rate']} Hz, {audio['waveform'].shape[1]} channel(s)")
+                else:
+                    print("No audio track found in video")
+
             except Exception as e:
-                print(f"Error extracting frames: {str(e)}")
+                print(f"Error extracting frames/audio: {str(e)}")
                 frames_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
                 frame_count = 0
                 video_fps = 0.0
-        
-        return (frames_tensor, frame_count, video_fps)
+                audio = {'waveform': torch.zeros((1, 1, 1), dtype=torch.float32), 'sample_rate': 44100}
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+
+        return (frames_tensor, audio, video_fps, frame_count)
     
-    def _extract_frames(self, video_content):
-        """Extract all frames from video content as tensor batch."""
+    def _extract_frames_from_file(self, video_path):
+        """Extract all frames from video file as tensor batch."""
         if not OPENCV_AVAILABLE:
             print("Cannot extract frames: opencv-python not installed")
             return torch.zeros((1, 64, 64, 3), dtype=torch.float32), 0, 0.0
-        
-        # Create temporary file for OpenCV
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-            temp_file.write(video_content)
-            temp_path = temp_file.name
-        
-        try:
-            # Open video with OpenCV
-            cap = cv2.VideoCapture(temp_path)
-            
-            if not cap.isOpened():
-                raise Exception("Could not open video file")
-            
-            # Get video properties
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            
-            frames = []
+
+        # Open video with OpenCV
+        cap = cv2.VideoCapture(video_path)
+
+        if not cap.isOpened():
+            raise Exception("Could not open video file")
+
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        frames = []
+        frame_count = 0
+
+        print(f"Video info: {total_frames} total frames at {fps:.2f} fps")
+        print(f"Extracting all frames...")
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Convert BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Convert to PIL Image then to tensor
+            pil_image = Image.fromarray(frame_rgb)
+            frame_array = np.array(pil_image).astype(np.float32) / 255.0
+
+            frames.append(frame_array)
+            frame_count += 1
+
+        cap.release()
+
+        if frames:
+            # Stack frames into tensor batch
+            frames_tensor = torch.from_numpy(np.stack(frames, axis=0))
+            print(f"Created tensor with shape: {frames_tensor.shape}")
+        else:
+            # Return empty tensor if no frames extracted
+            frames_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
             frame_count = 0
-            
-            print(f"Video info: {total_frames} total frames at {fps:.2f} fps")
-            print(f"Extracting all frames...")
-            
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                
-                # Convert BGR to RGB
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # Convert to PIL Image then to tensor
-                pil_image = Image.fromarray(frame_rgb)
-                frame_array = np.array(pil_image).astype(np.float32) / 255.0
-                
-                frames.append(frame_array)
-                frame_count += 1
-            
-            cap.release()
-            
-            if frames:
-                # Stack frames into tensor batch
-                frames_tensor = torch.from_numpy(np.stack(frames, axis=0))
-                print(f"Created tensor with shape: {frames_tensor.shape}")
-            else:
-                # Return empty tensor if no frames extracted
-                frames_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
-                frame_count = 0
-                fps = 0.0
-            
-            return frames_tensor, frame_count, fps
-            
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+            fps = 0.0
+
+        return frames_tensor, frame_count, fps
 
 
 # Node class mappings
