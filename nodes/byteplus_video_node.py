@@ -363,11 +363,12 @@ class SeedanceReferenceImagesNode:
 
 class SeedanceProNode:
     """Seedance Pro Video Generation Node"""
-    
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "model": (["seedance-1-0-pro-250528", "seedance-1-0-pro-fast-251015 (end_frame not supported)"], {"default": "seedance-1-0-pro-250528"}),
                 "prompt": ("STRING", {"default": "", "multiline": True}),
                 "mode": (["text-to-video", "image-to-video"], {"default": "text-to-video"}),
                 "resolution": (["480p", "720p", "1080p"], {"default": "1080p"}),
@@ -389,6 +390,7 @@ class SeedanceProNode:
 
     def generate_video(
         self,
+        model,
         prompt,
         mode,
         resolution,
@@ -401,6 +403,9 @@ class SeedanceProNode:
         camerafixed=False
     ):
         try:
+            # Extract the actual model ID (remove any notes in parentheses)
+            model_id = model.split(" (")[0]
+
             # Build prompt with text commands
             full_prompt = BytePlusPromptBuilder.build_prompt_with_commands(
                 prompt=prompt,
@@ -444,7 +449,8 @@ class SeedanceProNode:
                 })
 
                 # Check if end_frame is provided for first+last frame generation
-                if end_frame is not None:
+                # Only use end_frame for regular model (fast model does not support it)
+                if end_frame is not None and model_id == "seedance-1-0-pro-250528":
                     # Convert last frame
                     last_frame_base64 = BytePlusImageUtils.image_to_base64(end_frame)
                     if not last_frame_base64:
@@ -459,10 +465,10 @@ class SeedanceProNode:
                         },
                         "role": "last_frame"
                     })
-            
+
             # Submit to BytePlus API
             video_url = BytePlusApiHandler.submit_and_get_result(
-                model="seedance-1-0-pro-250528",
+                model=model_id,
                 content=content
             )
             

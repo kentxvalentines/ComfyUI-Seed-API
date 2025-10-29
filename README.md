@@ -12,6 +12,7 @@ This ComfyUI custom node provides comprehensive integration with Seed AI APIs, i
 - **High-Quality Pro Models**: Access to premium Seedance Pro model
 
 ### Image Generation
+- **Seedream 4 Unified Generation**: Advanced image generation with dynamic multi-image inputs, batch generation, and sequential image support
 - **Text-to-Image Generation**: Create high-quality images from text prompts using Seedream 3.0
 - **Image-to-Image Editing**: Edit and transform existing images with text descriptions using SeedEdit 3.0
 - **Frame Extraction**: Convert video URLs to individual frames for further processing
@@ -62,19 +63,34 @@ pip install -r requirements.txt
   - Use case: Generate videos that maintain style/appearance consistency with reference materials
 
 - **Seedance Pro Text/Image-to-Video**: High-quality video generation with end frame support
-  - Input: Text prompt, mode selection, optional input image, optional end frame, resolution, ratio, duration
+  - Input: Model selection (regular/fast), text prompt, mode selection, optional input image, optional end frame, resolution, ratio, duration
   - Output: Video URL (STRING)
+  - Models: seedance-1-0-pro-250528 (supports end frame), seedance-1-0-pro-fast-251015 (faster, no end frame support)
   - Features: Automatic first+last frame detection when end frame is provided in image-to-video mode
   - Use case: Premium quality video generation for professional use
 
 ### Image Generation Nodes (Seed/ImageGeneration)
 
-- **Seedream Text-to-Image**: Generate images from text descriptions
+- **Seedream 4**: Unified advanced image generation node
+  - Input: Text prompt, width, height, batch mode (single/parallel/sequential), batch size, up to 10 optional images, optional seed
+  - Output: Generated image(s) (IMAGE)
+  - Features:
+    - **Dynamic image inputs**: Automatically adds/removes image inputs as you connect them (up to 10)
+    - **Text-to-Image**: Generate from text when no images are connected
+    - **Image-to-Image**: Single image editing mode
+    - **Multi-Image Blending**: Blend 2-10 reference images together
+    - **Batch Generation Modes**:
+      - Single: Generate one image
+      - Parallel: Generate multiple independent variations with concurrent API calls (each with random seed)
+      - Sequential: Generate thematically related images in one request
+  - Use case: All-in-one solution for advanced image generation workflows
+
+- **Seedream Text-to-Image**: Generate images from text descriptions (Seedream 3.0)
   - Input: Text prompt, size selection, optional seed
   - Output: Generated image (IMAGE)
   - Use case: Create high-quality images from detailed text descriptions
 
-- **SeedEdit Image-to-Image**: Edit and transform existing images
+- **SeedEdit Image-to-Image**: Edit and transform existing images (SeedEdit 3.0)
   - Input: Text prompt, input image, size selection, guidance scale, optional seed
   - Output: Edited image (IMAGE)
   - Use case: Modify existing images based on text instructions (change colors, add/remove objects, style transfer)
@@ -117,6 +133,34 @@ pip install -r requirements.txt
    - Save video using external video saving nodes
 
 ### Image Generation Workflow
+
+#### Seedream 4 (Advanced/Unified Node)
+1. **Dynamic Image Inputs**:
+   - Start with just one image input slot
+   - Connect images and new slots automatically appear (up to 10)
+   - Disconnect images and unused slots disappear
+   - No images connected = Text-to-Image mode
+   - 1 image = Image-to-Image mode
+   - 2-10 images = Multi-Image Blending mode
+
+2. **Batch Generation Modes**:
+   - **Single**: Generate one image with specified seed (or random if -1)
+   - **Parallel**: Generate multiple independent variations
+     - Makes concurrent API calls for faster generation
+     - Each request uses a random seed for maximum variety
+     - Great for exploring different variations of the same prompt
+   - **Sequential**: Generate thematically related images
+     - Single API call that produces multiple related images
+     - Images share a narrative or visual theme
+     - Limited to 15 total images (input + output combined)
+
+3. **Tips for Seedream 4**:
+   - Use parallel mode for quick variations and comparisons
+   - Use sequential mode for creating image sequences or stories
+   - Specify seed for reproducibility (except in parallel mode which always uses random seeds)
+   - Combine multiple reference images for complex style blending
+
+#### Seedream 3.0 / SeedEdit 3.0
 1. **For new images**: Use Seedream Text-to-Image
    - Write detailed prompts for best results
    - Experiment with different sizes for various use cases
@@ -181,9 +225,12 @@ pip install -r requirements.txt
 - **Be specific in prompts**: Include details about movement, camera angles, and style
 - **Use appropriate ratios**: Match your intended use case (16:9 for landscape, 9:16 for mobile, etc.)
 - **Leverage reference images**: For consistent character/style appearance across videos
-- **Seedance Pro end frame support**: In image-to-video mode, connect an optional end frame to automatically enable first+last frame generation for smoother transitions
+- **Seedance Pro model selection**: Use fast model for quicker generation, regular model when you need end frame support
+- **Seedance Pro end frame support**: In image-to-video mode with regular model, connect an optional end frame to automatically enable first+last frame generation for smoother transitions
 
 ### Image Generation
+- **Seedream 4 batch modes**: Use parallel for variations, sequential for thematic series
+- **Dynamic inputs**: Simply connect images - slots auto-add up to 10 for multi-image blending
 - **Detailed prompts work better**: Include style, lighting, composition details
 - **Use SeedEdit for modifications**: Better than text-to-image for specific edits
 - **Guidance scale tuning**: Start with default 5.5, increase for more prompt adherence
