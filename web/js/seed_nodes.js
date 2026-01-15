@@ -1,4 +1,40 @@
 import { app } from "../../../scripts/app.js";
+import { api } from "../../../scripts/api.js";
+
+// Listen for executed event to auto-populate draft_task_id
+// This works because SeedancePro15VideoNode has OUTPUT_NODE = True and returns ui data
+api.addEventListener("executed", ({ detail }) => {
+	const { node: nodeId, output } = detail;
+
+	// Check if this execution has a draft_task_id in ui output
+	if (output && output.draft_task_id && output.draft_task_id[0]) {
+		const draftTaskId = output.draft_task_id[0];
+
+		// Find the node in the graph
+		const node = app.graph.getNodeById(nodeId);
+		if (!node || node.type !== "SeedancePro15Video") {
+			return;
+		}
+
+		console.log("[SeedAPI] Received draft_task_id from node:", draftTaskId);
+
+		// Check if draft_mode widget is enabled
+		const draftModeWidget = node.widgets?.find(w => w.name === "draft_mode");
+		if (!draftModeWidget || !draftModeWidget.value) {
+			return; // Only auto-populate when draft_mode was True
+		}
+
+		// Find and update the draft_task_id widget
+		const draftTaskIdWidget = node.widgets?.find(w => w.name === "draft_task_id");
+		if (draftTaskIdWidget && draftTaskId) {
+			console.log(`[SeedAPI] Auto-populating draft_task_id: ${draftTaskId}`);
+			draftTaskIdWidget.value = draftTaskId;
+
+			// Mark the graph as changed so it can be saved
+			app.graph.setDirtyCanvas(true, true);
+		}
+	}
+});
 
 app.registerExtension({
 	name: "SeedAPI.DynamicInputs",

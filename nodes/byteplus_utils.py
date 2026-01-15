@@ -287,12 +287,139 @@ class BytePlusApiHandler:
     def submit_and_get_result(model: str, content: list, callback_url: Optional[str] = None) -> Optional[str]:
         """Submit task and wait for completion, return video URL."""
         task_id = BytePlusApiHandler.create_video_generation_task(model, content, callback_url)
-        
+
         if not task_id:
             return None
-            
+
         print(f"Created BytePlus task: {task_id}")
         return BytePlusApiHandler.wait_for_completion(task_id)
+
+    @staticmethod
+    def create_video_generation_task_v2(
+        model: str,
+        content: list,
+        resolution: Optional[str] = None,
+        ratio: Optional[str] = None,
+        duration: Optional[int] = None,
+        generate_audio: Optional[bool] = None,
+        seed: Optional[int] = None,
+        draft: Optional[bool] = None,
+        callback_url: Optional[str] = None
+    ) -> Optional[str]:
+        """Create a video generation task with direct parameters (v2 API format)."""
+        config = BytePlusConfig()
+
+        headers = {
+            "Authorization": f"Bearer {config.get_api_key()}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "content": content
+        }
+
+        # Add optional parameters directly to payload
+        if resolution is not None:
+            payload["resolution"] = resolution
+        if ratio is not None:
+            payload["ratio"] = ratio
+        if duration is not None:
+            payload["duration"] = duration
+        if generate_audio is not None:
+            payload["generate_audio"] = generate_audio
+        if seed is not None and seed != -1:
+            payload["seed"] = seed
+        if draft is not None:
+            payload["draft"] = draft
+        if callback_url:
+            payload["callback_url"] = callback_url
+
+        print(f"Making request to: {config.get_base_url()}/contents/generations/tasks")
+        print(f"Model: {model}")
+        LoggingUtils.safe_log_payload(payload, "Payload (v2 format)")
+
+        try:
+            response = requests.post(
+                f"{config.get_base_url()}/contents/generations/tasks",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("id")
+            else:
+                print(f"Error creating task: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            print(f"Error creating video generation task: {str(e)}")
+            return None
+
+    @staticmethod
+    def submit_and_get_result_v2(
+        model: str,
+        content: list,
+        resolution: Optional[str] = None,
+        ratio: Optional[str] = None,
+        duration: Optional[int] = None,
+        generate_audio: Optional[bool] = None,
+        seed: Optional[int] = None,
+        draft: Optional[bool] = None,
+        callback_url: Optional[str] = None
+    ) -> Optional[str]:
+        """Submit task with direct parameters and wait for completion, return video URL."""
+        task_id = BytePlusApiHandler.create_video_generation_task_v2(
+            model=model,
+            content=content,
+            resolution=resolution,
+            ratio=ratio,
+            duration=duration,
+            generate_audio=generate_audio,
+            seed=seed,
+            draft=draft,
+            callback_url=callback_url
+        )
+
+        if not task_id:
+            return None
+
+        print(f"Created BytePlus task (v2): {task_id}")
+        return BytePlusApiHandler.wait_for_completion(task_id)
+
+    @staticmethod
+    def submit_and_get_result_with_task_id(
+        model: str,
+        content: list,
+        resolution: Optional[str] = None,
+        ratio: Optional[str] = None,
+        duration: Optional[int] = None,
+        generate_audio: Optional[bool] = None,
+        seed: Optional[int] = None,
+        draft: Optional[bool] = None,
+        callback_url: Optional[str] = None
+    ) -> tuple:
+        """Submit task and return both video URL and task ID."""
+        task_id = BytePlusApiHandler.create_video_generation_task_v2(
+            model=model,
+            content=content,
+            resolution=resolution,
+            ratio=ratio,
+            duration=duration,
+            generate_audio=generate_audio,
+            seed=seed,
+            draft=draft,
+            callback_url=callback_url
+        )
+
+        if not task_id:
+            return (None, None)
+
+        print(f"Created BytePlus task: {task_id}")
+        video_url = BytePlusApiHandler.wait_for_completion(task_id)
+        return (video_url, task_id)
 
     @staticmethod
     def handle_video_generation_error(model_name: str, error: str) -> tuple:
