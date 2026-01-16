@@ -381,8 +381,8 @@ class SeedancePro15VideoNode:
                 "last_frame": ("IMAGE",),
                 "generate_audio": ("BOOLEAN", {"default": False}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
-                "draft_mode": ("BOOLEAN", {"default": False}),
-                "draft_task_id": ("STRING", {"default": ""}),
+                "draft_mode": ("BOOLEAN", {"default": False, "tooltip": "When enabled, generates a fast 480p draft preview and returns the draft task ID to the field below. Once satisfied with the draft, disable draft mode and the task ID will be used to render the full resolution video. Note: Draft mode does not support last frame inputs."}),
+                "draft_task_id": ("STRING", {"default": "", "tooltip": "The draft task ID from a previous draft generation. Leave empty for new generations, or paste a task ID to render it at full resolution."}),
             },
         }
 
