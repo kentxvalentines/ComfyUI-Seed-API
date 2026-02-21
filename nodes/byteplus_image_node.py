@@ -695,6 +695,171 @@ class ResolutionHelperNode:
         return (width, height)
 
 
+class Seedream45UnifiedNode:
+    """Seedream 4.5 Generation Node - Handles text-to-image, image-to-image, multi-image blending with batch generation"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "width": ("INT", {"default": 2048, "min": 64, "max": 4096, "step": 1}),
+                "height": ("INT", {"default": 2048, "min": 64, "max": 4096, "step": 1}),
+                "batch_mode": (["single", "parallel", "sequential"], {"default": "single"}),
+                "batch_size": ("INT", {"default": 1, "min": 1, "max": 15, "step": 1}),
+            },
+            "optional": {
+                "image1": ("IMAGE",),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "generate_image"
+    CATEGORY = "Seed/ImageGeneration"
+    DESCRIPTION = """
+Seedream 4.5 unified generation node supporting text-to-image, image-to-image,
+and multi-image blending (up to 10 images). Image inputs are automatically added
+as you connect them.
+
+Batch modes:
+- single: Generate one image (uses specified seed or random if -1)
+- parallel: Generate multiple independent images (multiple concurrent API calls, each with random seed)
+- sequential: Generate thematically related images in sequence (single API call, uses specified seed)
+
+Note: For sequential mode with input images, total input + output images ≤ 15.
+"""
+
+    def generate_image(self, prompt, width, height, batch_mode, batch_size, seed=-1, **kwargs):
+        try:
+            # Convert images to base64 (dynamically handle all provided images)
+            images_base64 = []
+            for key, img in kwargs.items():
+                if key.startswith("image") and img is not None:
+                    img_b64 = BytePlusImageUtils.image_to_base64(img)
+                    if img_b64:
+                        images_base64.append(img_b64)
+
+            size = SeedImageApiHandler.resolve_size(width, height)
+
+            # Handle parallel mode - make multiple independent API calls concurrently
+            if batch_mode == "parallel":
+                print(f"Seedream 4.5: Parallel batch mode, submitting {batch_size} concurrent API requests")
+
+                def generate_single_image(index):
+                    """Generate a single image in a thread"""
+                    print(f"Seedream 4.5: Submitting request {index+1}/{batch_size}")
+                    arguments = {
+                        "prompt": prompt,
+                        "size": size,
+                        "response_format": "url",
+                        "watermark": False,
+                        "sequential_image_generation": "disabled",
+                    }
+
+                    # Always use a random seed for each parallel request
+                    request_seed = random.randint(0, 2147483647)
+                    arguments["seed"] = request_seed
+                    print(f"Seedream 4.5: Request {index+1} using random seed {request_seed}")
+
+                    # Add images if provided
+                    if len(images_base64) == 1:
+                        arguments["image"] = images_base64[0]
+                    elif len(images_base64) > 1:
+                        arguments["image"] = images_base64
+
+                    result = SeedImageApiHandler.generate_image(
+                        "seedream-4-5-251128",
+                        arguments
+                    )
+
+                    # Process images from this result
+                    images = []
+                    for img_info in result.get("data", []):
+                        img_url = img_info["url"]
+                        img_response = requests.get(img_url)
+                        img = Image.open(io.BytesIO(img_response.content))
+                        img_array = np.array(img).astype(np.float32) / 255.0
+                        images.append(img_array)
+
+                    print(f"Seedream 4.5: Request {index+1}/{batch_size} completed")
+                    return images
+
+                # Submit all requests concurrently using ThreadPoolExecutor
+                all_images = []
+                with ThreadPoolExecutor(max_workers=batch_size) as executor:
+                    # Submit all tasks
+                    futures = [executor.submit(generate_single_image, i) for i in range(batch_size)]
+
+                    # Collect results as they complete
+                    for future in as_completed(futures):
+                        try:
+                            images = future.result()
+                            all_images.extend(images)
+                        except Exception as e:
+                            print(f"Seedream 4.5: Error in parallel request: {str(e)}")
+
+                if all_images:
+                    # Stack all images into a batch
+                    stacked_images = np.stack(all_images, axis=0)
+                    img_tensor = torch.from_numpy(stacked_images)
+                    print(f"Seedream 4.5: Parallel batch complete, generated {len(all_images)} images")
+                    return (img_tensor,)
+                else:
+                    return SeedResultProcessor.create_blank_image()
+
+            # Handle single or sequential mode - single API call
+            else:
+                arguments = {
+                    "prompt": prompt,
+                    "size": size,
+                    "response_format": "url",
+                    "watermark": False,
+                }
+
+                # Add seed if specified
+                if seed != -1:
+                    arguments["seed"] = seed
+
+                if batch_mode == "sequential":
+                    # Sequential batch generation
+                    arguments["sequential_image_generation"] = "auto"
+                    arguments["sequential_image_generation_options"] = {
+                        "max_images": batch_size
+                    }
+                    arguments["stream"] = False
+                    print(f"Seedream 4.5: Sequential batch mode, requesting max {batch_size} images (with {len(images_base64)} input images)")
+                else:
+                    # Single image generation
+                    arguments["sequential_image_generation"] = "disabled"
+                    print(f"Seedream 4.5: Single image mode")
+
+                # Add images if provided
+                if len(images_base64) == 1:
+                    arguments["image"] = images_base64[0]
+                    print(f"Seedream 4.5: Using image-to-image mode")
+                elif len(images_base64) > 1:
+                    arguments["image"] = images_base64
+                    print(f"Seedream 4.5: Using multi-image blending mode ({len(images_base64)} images)")
+                else:
+                    print(f"Seedream 4.5: Using text-to-image mode")
+
+                result = SeedImageApiHandler.generate_image(
+                        "seedream-4-5-251128",
+                    arguments
+                )
+
+                print(f"Seedream 4.5: API returned {len(result.get('data', []))} images")
+                if 'usage' in result:
+                    print(f"Seedream 4.5: Usage - generated_images: {result['usage'].get('generated_images', 'N/A')}")
+
+                return SeedResultProcessor.process_image_result(result)
+
+        except Exception as e:
+            return SeedImageApiHandler.handle_image_generation_error(
+                "Seedream 4.5", str(e)
+            )
+
 # Node class mappings
 NODE_CLASS_MAPPINGS = {
     "SeedreamTextToImage": SeedreamTextToImageNode,
@@ -704,6 +869,7 @@ NODE_CLASS_MAPPINGS = {
     "Seedream4MultiImageBlending": Seedream4MultiImageBlendingNode,
     "Seedream4BatchGeneration": Seedream4BatchGenerationNode,
     "Seedream4Unified": Seedream4UnifiedNode,
+    "Seedream45Unified": Seedream45UnifiedNode,
     "ResolutionHelper": ResolutionHelperNode,
 }
 
@@ -716,5 +882,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Seedream4MultiImageBlending": "Seedream 4 Multi-Image Blending",
     "Seedream4BatchGeneration": "Seedream 4 Batch Generation",
     "Seedream4Unified": "Seedream 4",
+    "Seedream45Unified": "Seedream 4.5",
     "ResolutionHelper": "Resolution Helper",
 }

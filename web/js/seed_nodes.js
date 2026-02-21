@@ -39,8 +39,8 @@ api.addEventListener("executed", ({ detail }) => {
 app.registerExtension({
 	name: "SeedAPI.DynamicInputs",
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
-		if (nodeData.name === "Seedream4Unified") {
-			console.log("Registering Seedream4Unified dynamic inputs");
+		if (nodeData.name === "Seedream4Unified" || nodeData.name === "Seedream45Unified") {
+			console.log(`Registering ${nodeData.name} dynamic inputs`);
 
 			const onConnectionsChange = nodeType.prototype.onConnectionsChange;
 			nodeType.prototype.onConnectionsChange = function (type, index, connected, link_info) {
